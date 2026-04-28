@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 /* tslint:disable */
-import '@tailwindcss/browser';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './src/App';
+import App from './App';
+import { AuthProvider } from './context/AuthContext';
+import './index.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -16,6 +17,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </React.StrictMode>,
 );

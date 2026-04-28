@@ -4,7 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 /* tslint:disable */
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
+import { 
+  X, 
+  Minus, 
+  Maximize2, 
+  ChevronLeft, 
+  ChevronRight,
+  Columns2,
+  Layout
+} from 'lucide-react';
 
 interface WindowProps {
   title: string;
@@ -138,16 +147,17 @@ export const Window: React.FC<WindowProps> = ({
 
   return (
     <div 
-      className={`absolute border border-black/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden font-sans backdrop-blur-md transition-shadow duration-200 ${isActive ? 'ring-2 ring-blue-500/20 shadow-blue-900/10' : 'opacity-95'} ${isActive ? 'bg-gray-50/85' : 'bg-gray-100/75'}
-        ${windowState === 'maximized' ? 'w-full h-full top-0 left-0 rounded-none' : ''}
-        ${windowState === 'split-left' ? 'w-1/2 h-full top-0 left-0 rounded-none' : ''}
-        ${windowState === 'split-right' ? 'w-1/2 h-full top-0 right-0 rounded-none' : ''}
+      className={`absolute border border-black/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden font-sans backdrop-blur-md transition-all duration-300 ${isActive ? 'ring-2 ring-blue-500/20 shadow-blue-900/10' : 'opacity-95'} ${isActive ? 'bg-gray-50/85' : 'bg-gray-100/75'}
+        ${windowState === 'maximized' ? '!w-full !h-full !top-0 !left-0 rounded-none' : ''}
+        ${windowState === 'split-left' ? '!w-1/2 !h-full !top-0 !left-0 rounded-none' : ''}
+        ${windowState === 'split-right' ? '!w-1/2 !h-full !top-0 !right-0 rounded-none' : ''}
       `}
       style={{ 
-        left: position.x, 
-        top: position.y, 
+        left: windowState === 'normal' ? position.x : undefined, 
+        top: windowState === 'normal' ? position.y : undefined, 
+        width: windowState === 'normal' ? undefined : undefined, // Handled by classes
+        height: windowState === 'normal' ? undefined : undefined, // Handled by classes
         zIndex: zIndex,
-
       }}
       onMouseDown={windowState === 'normal' ? onFocus : undefined}
     >
@@ -157,26 +167,49 @@ export const Window: React.FC<WindowProps> = ({
         onMouseDown={windowState === 'normal' ? handleMouseDown : undefined}
       >
         <div className="flex items-center gap-2 w-24 window-controls">
-          <WindowButton
-            color="bg-red-500"
-            onClick={onClose}
-            ariaLabel="Close window"
-          />
-          <WindowButton 
-            color="bg-yellow-400" 
-            onClick={onMinimize}
-            ariaLabel="Minimize window" 
-          />
-          <WindowButton 
-            color="bg-green-500" 
-            onClick={onMaximize}
-            ariaLabel="Maximize window" 
-          />
+          <button 
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center group"
+            title="Close"
+          >
+            <X size={10} className="text-red-900 opacity-0 group-hover:opacity-100" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+            className="w-3.5 h-3.5 rounded-full bg-yellow-400 flex items-center justify-center group"
+            title="Minimize"
+          >
+            <Minus size={10} className="text-yellow-900 opacity-0 group-hover:opacity-100" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onMaximize(); }}
+            className="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center group"
+            title={windowState === 'maximized' ? "Restore" : "Maximize"}
+          >
+            <Maximize2 size={8} className="text-green-900 opacity-0 group-hover:opacity-100" />
+          </button>
         </div>
+        
         <div className="flex-grow text-center">
           <span className={`font-semibold text-sm transition-colors ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>{title}</span>
         </div>
-        <div className="w-24"></div>
+
+        <div className="flex items-center gap-1 w-24 justify-end window-controls">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onSplitScreenLeft(); }}
+            className={`p-1 rounded hover:bg-black/5 transition-colors ${windowState === 'split-left' ? 'text-blue-600 bg-blue-50' : 'text-gray-500'}`}
+            title="Split Left"
+          >
+            <Columns2 size={16} className="rotate-180" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onSplitScreenRight(); }}
+            className={`p-1 rounded hover:bg-black/5 transition-colors ${windowState === 'split-right' ? 'text-blue-600 bg-blue-50' : 'text-gray-500'}`}
+            title="Split Right"
+          >
+            <Columns2 size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Menu Bar */}

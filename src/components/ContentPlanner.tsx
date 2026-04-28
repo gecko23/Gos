@@ -27,6 +27,7 @@ function cn(...inputs: ClassValue[]) {
 interface Post {
   id: string;
   title: string;
+  description?: string;
   time: string;
   status: 'Published' | 'Scheduled' | 'Draft';
   date: Date;
@@ -34,23 +35,25 @@ interface Post {
 }
 
 const INITIAL_POSTS: Post[] = [
-  { id: '1', title: 'Reasons', time: '9:00 AM', status: 'Published', date: new Date(2026, 1, 9) },
-  { id: '2', title: 'meta description tips', time: '2:42 PM', status: 'Published', date: new Date(2026, 1, 10) },
-  { id: '3', title: 'why have houseplants in...', time: '9:00 AM', status: 'Published', date: new Date(2026, 1, 13) },
-  { id: '4', title: 'Why I love San Francisco', time: '9:00 AM', status: 'Published', date: new Date(2026, 1, 14) },
-  { id: '5', title: 'why I love SEO', time: '9:00 AM', status: 'Scheduled', date: new Date(2026, 1, 15) },
-  { id: '6', title: 'Is Running Man Bad', time: '3:00 AM', status: 'Scheduled', date: new Date(2026, 1, 16), type: 'video' },
-  { id: '7', title: 'How to Create a Custom...', time: '7:55 AM', status: 'Scheduled', date: new Date(2026, 1, 17) },
-  { id: '8', title: 'How to Use AI to Create a...', time: '7:55 AM', status: 'Scheduled', date: new Date(2026, 1, 18) },
-  { id: '9', title: 'How to Safely Test WordPres...', time: '3:00 AM', status: 'Scheduled', date: new Date(2026, 1, 19) },
-  { id: '10', title: 'How to Use AI to Create Feature...', time: '3:00 AM', status: 'Scheduled', date: new Date(2026, 1, 20) },
-  { id: '11', title: 'How to Use AI to Rewrite Old Bl...', time: '7:55 AM', status: 'Scheduled', date: new Date(2026, 1, 21) },
+  { id: '1', title: 'Reasons', description: 'Exploring the various reasons behind recent market shifts.', time: '9:00 AM', status: 'Published', date: new Date(2026, 1, 9) },
+  { id: '2', title: 'meta description tips', description: 'How to write meta descriptions that actually convert.', time: '2:42 PM', status: 'Published', date: new Date(2026, 1, 10) },
+  { id: '3', title: 'why have houseplants in...', description: 'The psychological and physical benefits of indoor greenery.', time: '9:00 AM', status: 'Published', date: new Date(2026, 1, 13) },
+  { id: '4', title: 'Why I love San Francisco', description: 'A personal journey through the fog and hills of SF.', time: '9:00 AM', status: 'Published', date: new Date(2026, 1, 14) },
+  { id: '5', title: 'why I love SEO', description: 'The magic of organic growth and search algorithms.', time: '9:00 AM', status: 'Scheduled', date: new Date(2026, 1, 15) },
+  { id: '6', title: 'Is Running Man Bad', description: 'A deep dive into the classic action movie and its legacy.', time: '3:00 AM', status: 'Scheduled', date: new Date(2026, 1, 16), type: 'video' },
+  { id: '7', title: 'How to Create a Custom...', description: 'Step-by-step guide to building custom WordPress themes.', time: '7:55 AM', status: 'Scheduled', date: new Date(2026, 1, 17) },
+  { id: '8', title: 'How to Use AI to Create a...', description: 'Leveraging LLMs for content strategy and creation.', time: '7:55 AM', status: 'Scheduled', date: new Date(2026, 1, 18) },
+  { id: '9', title: 'How to Safely Test WordPres...', description: 'Best practices for staging and testing WP updates.', time: '3:00 AM', status: 'Scheduled', date: new Date(2026, 1, 19) },
+  { id: '10', title: 'How to Use AI to Create Feature...', description: 'Generating high-quality featured images with DALL-E and Midjourney.', time: '3:00 AM', status: 'Scheduled', date: new Date(2026, 1, 20) },
+  { id: '11', title: 'How to Use AI to Rewrite Old Bl...', description: 'Refreshing evergreen content using AI assistance.', time: '7:55 AM', status: 'Scheduled', date: new Date(2026, 1, 21) },
 ];
 
 export const ContentPlanner: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 1)); // February 2026
   const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [isPostDetailOpen, setIsPostDetailOpen] = useState(false);
   const [keywords, setKeywords] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<{title: string, description: string}[]>([]);
@@ -114,10 +117,11 @@ export const ContentPlanner: React.FC = () => {
     }
   };
 
-  const addPost = (title: string) => {
+  const addPost = (title: string, description?: string) => {
     const newPost: Post = {
       id: Math.random().toString(36).substr(2, 9),
       title,
+      description,
       time: '10:00 AM',
       status: 'Scheduled',
       date: new Date(2026, 1, 22), // Default to some date
@@ -126,6 +130,17 @@ export const ContentPlanner: React.FC = () => {
     setIsGeneratorOpen(false);
     setGeneratedIdeas([]);
     setKeywords('');
+  };
+
+  const handleEditPost = (post: Post) => {
+    setSelectedPost(post);
+    setIsPostDetailOpen(true);
+  };
+
+  const updatePost = (updatedPost: Post) => {
+    setPosts(posts.map(p => p.id === updatedPost.id ? updatedPost : p));
+    setIsPostDetailOpen(false);
+    setSelectedPost(null);
   };
 
   return (
@@ -231,7 +246,10 @@ export const ContentPlanner: React.FC = () => {
                       </h3>
                       <p className="text-[11px] text-gray-500 mb-3">{post.time}</p>
                       
-                      <button className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-medium transition-colors border border-white/5">
+                      <button 
+                        onClick={() => handleEditPost(post)}
+                        className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-medium transition-colors border border-white/5"
+                      >
                         {post.status === 'Published' ? 'View Post' : 'Edit Post'}
                       </button>
                     </div>
@@ -245,6 +263,111 @@ export const ContentPlanner: React.FC = () => {
 
       {/* Generator Modal */}
       <AnimatePresence>
+        {isPostDetailOpen && selectedPost && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPostDetailOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#151518] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "p-2 rounded-lg",
+                    selectedPost.status === 'Published' ? "bg-emerald-500/10" : "bg-orange-500/10"
+                  )}>
+                    {selectedPost.status === 'Published' ? 
+                      <CheckCircle2 className="text-emerald-400" size={20} /> : 
+                      <Clock className="text-orange-400" size={20} />
+                    }
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">{selectedPost.status === 'Published' ? 'View Post' : 'Edit Post'}</h2>
+                    <p className="text-xs text-gray-400">{selectedPost.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsPostDetailOpen(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Title</label>
+                  <input 
+                    type="text" 
+                    value={selectedPost.title}
+                    onChange={(e) => setSelectedPost({...selectedPost, title: e.target.value})}
+                    readOnly={selectedPost.status === 'Published'}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
+                  <textarea 
+                    value={selectedPost.description || ''}
+                    onChange={(e) => setSelectedPost({...selectedPost, description: e.target.value})}
+                    readOnly={selectedPost.status === 'Published'}
+                    rows={4}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none disabled:opacity-50"
+                    placeholder="No description provided."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Time</label>
+                    <input 
+                      type="text" 
+                      value={selectedPost.time}
+                      onChange={(e) => setSelectedPost({...selectedPost, time: e.target.value})}
+                      readOnly={selectedPost.status === 'Published'}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Status</label>
+                    <select 
+                      value={selectedPost.status}
+                      onChange={(e) => setSelectedPost({...selectedPost, status: e.target.value as any})}
+                      disabled={selectedPost.status === 'Published'}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all disabled:opacity-50 appearance-none"
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Published">Published</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-white/[0.02] border-t border-white/5 flex justify-end gap-3">
+                <button 
+                  onClick={() => setIsPostDetailOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                >
+                  {selectedPost.status === 'Published' ? 'Close' : 'Cancel'}
+                </button>
+                {selectedPost.status !== 'Published' && (
+                  <button 
+                    onClick={() => updatePost(selectedPost)}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold transition-all"
+                  >
+                    Save Changes
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isGeneratorOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -305,7 +428,7 @@ export const ContentPlanner: React.FC = () => {
                           <div 
                             key={idx}
                             className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-blue-500/50 transition-all group cursor-pointer"
-                            onClick={() => addPost(idea.title)}
+                            onClick={() => addPost(idea.title, idea.description)}
                           >
                             <div className="flex items-start justify-between">
                               <div>

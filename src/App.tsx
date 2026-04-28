@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 /* tslint:disable */
-import '@tailwindcss/browser';
 import React, {useCallback, useEffect, useState, useRef} from 'react';
 import {GeneratedContent} from './components/GeneratedContent';
 import {ParametersPanel} from './components/ParametersPanel';
@@ -37,7 +36,7 @@ import {
   openUrlFunctionDeclaration
 } from './services/geminiService';
 import {AppDefinition, AppInstance, InteractionData, ConversationalResponse, DesktopLayout, WindowState} from './types';
-import {AuthContext, AuthProvider, useAuth} from './context/AuthContext';
+import {AuthProvider, useAuth} from './context/AuthContext';
 import {GoogleGenAI, LiveServerMessage, Modality} from '@google/genai';
 
 
@@ -85,9 +84,8 @@ function pcmToBase64(data: Float32Array): string {
     return btoa(binary);
 }
 
-export const App: React.FC = () => {
+const App: React.FC = () => {
   const { userId, login } = useAuth();
-
 
   const [openApps, setOpenApps] = useState<AppInstance[]>([]);
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
@@ -149,20 +147,22 @@ export const App: React.FC = () => {
             ),
           );
         }
+      } catch (error) {
         setOpenApps((prev) =>
           prev.map((app) =>
             app.definition.id === appId
-              ? {...app, content: fullContent, isLoading: false} 
+              ? {
+                  ...app,
+                  isLoading: false,
+                  error: 'Failed to generate content. Please try again.',
+                }
               : app,
           ),
         );
-      } catch (error) {
-        console.error('Error streaming app content:', error);
-        setOpenApps((prev) =>
+      } finally {
+         setOpenApps((prev) =>
           prev.map((app) =>
-            app.definition.id === appId
-              ? {...app, error: error instanceof Error ? error.message : 'An unknown error occurred', isLoading: false}
-              : app,
+            app.definition.id === appId ? {...app, isLoading: false} : app,
           ),
         );
       }
@@ -201,8 +201,93 @@ export const App: React.FC = () => {
     [currentMaxHistoryLength, isDeepThinkingEnabled, internalHandleLlmRequest],
   );
 
-  if (!userId) {
-    return (
+  const handleAppOpen = useCallback((appDef: AppDefinition, initialUrl?: string, defaultWindowState: WindowState = 'normal') => {
+    if (isParametersOpen) setIsParametersOpen(false);
+    if (isStartMenuOpen) setIsStartMenuOpen(false);
+
+    const existingApp = openApps.find((a) => a.definition.id === appDef.id);
+    if (existingApp) {
+      bringToFront(appDef.id);
+      if (initialUrl && appDef.id === 'web_browser_app') {
+          handleInteractionForApp(appDef.id, {
+            id: 'browser_url_request',
+            type: 'url_navigation',
+            value: initialUrl,
+            elementType: 'external_link',
+            elementText: `Navigate to ${initialUrl}`,
+            appContext: appDef.id,
+            isDirectUrlNavigation: true
+          });
+      }
+    } else {
+      const initialInteraction: InteractionData = {
+        id: appDef.id,
+        type: initialUrl ? 'app_open_with_url' : 'app_open',
+        elementText: appDef.name,
+        elementType: 'icon',
+        appContext: appDef.id,
+        value: initialUrl || (appDef.id === 'web_browser_app' ? 'newtab' : undefined),
+        isDirectUrlNavigation: !!initialUrl,
+      };
+
+      const maxZ = Math.max(0, ...openApps.map(a => a.zIndex));
+      
+      let x = 50;
+      let y = 50;
+      const offset = 30;
+      
+      for (let i = 0; i < 50; i++) {
+          const isOccupied = openApps.some(app => 
+            !app.isMinimized &&
+            Math.abs(app.position.x - x) < 20 && 
+            Math.abs(app.position.y - y) < 20
+          );
+          
+          if (!isOccupied) break;
+          
+          x += offset;
+          y += offset;
+          
+          if (typeof window !== 'undefined') {
+              if (y > window.innerHeight - 200 || x > window.innerWidth - 200) {
+                   const cycle = Math.floor(i / 10) + 1;
+                   x = 50 + (cycle * 50);
+                   y = 50;
+              }
+          }
+      }
+
+      const newInstance: AppInstance = {
+        definition: appDef,
+        content: '',
+        history: [initialInteraction],
+        future: [],
+        path: [appDef.id],
+        isLoading: true,
+        error: null,
+        position: { x, y },
+        zIndex: maxZ + 1,
+        isMinimized: false,
+        windowState: appDef.defaultWindowState || defaultWindowState
+      };
+
+      setOpenApps((prev) => [...prev, newInstance]);
+      setActiveAppId(appDef.id);
+      
+      const clientSideApps = ['file_explorer', 'image_studio', 'translator_app', 'seo_article_writer_app', 'gallery_app', 'keyword_researcher_app', 'to_do_list_app', 'gemini_lens', 'google_trends_app', 'calendar_app', 'wallet_app', 'content_planner_app'];
+      if (!clientSideApps.includes(appDef.id) || (appDef.id === 'web_browser_app' && initialUrl)) {
+        internalHandleLlmRequest(
+            appDef.id,
+            [initialInteraction],
+            currentMaxHistoryLength,
+            isDeepThinkingEnabled
+        );
+      } else {
+          setOpenApps(prev => prev.map(a => a.definition.id === appDef.id ? {...a, isLoading: false} : a));
+      }
+    }
+  }, [isParametersOpen, isStartMenuOpen, openApps, currentMaxHistoryLength, isDeepThinkingEnabled, bringToFront, handleInteractionForApp, internalHandleLlmRequest]);
+
   // Live API Connection
   const connectToLive = async () => {
       try {
@@ -423,8 +508,39 @@ export const App: React.FC = () => {
       setOpenApps(prev => prev.map(a => a.definition.id === appId ? { ...a, position: { x, y } } : a));
   };
 
+  if (!userId) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 font-sans">
+        <div className="bg-white p-8 rounded-xl shadow-lg w-96 text-center">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">Welcome to G OS Wallet</h2>
+          <p className="text-gray-600 mb-6">Please enter a username to start your session.</p>
+          <input
+            type="text"
+            placeholder="Enter username"
+            className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.currentTarget.value.trim() !== '') {
+                login(e.currentTarget.value.trim());
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              const input = document.querySelector('input');
+              if (input && input.value.trim() !== '') {
+                login(input.value.trim());
+              }
+            }}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+          >
+            Start Session
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <AuthProvider>
     <div className="h-screen w-screen overflow-hidden bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center font-sans text-gray-900 select-none">
       
       {/* Desktop Icons */}
@@ -576,4 +692,4 @@ export const App: React.FC = () => {
   );
 };
 
-
+export default App;
